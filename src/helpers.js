@@ -14,10 +14,10 @@ function hashFromString(path, separator, hash) {
     var obj     = tmp_obj;
 
     for( var x = 0; x < parts.length; x++ ) {
-        if ( x == parts.length - 1 ) {
-            tmp_obj[parts[x]] = '';
+        if ( x === parts.length - 1 ) {
+            tmp_obj[parts[x]] = parts[x];
         }
-        else if ( ! tmp_obj[parts[x]] ) {
+        else if ((tmp_obj[parts[x]] === parts[x]) || ! tmp_obj[parts[x]] ) {
             tmp_obj[parts[x]] = {};
         }
         tmp_obj = tmp_obj[parts[x]];

@@ -208,8 +208,6 @@ Parser.prototype._flush = function(done) {
         translationsHash = helpers.hashFromString( key, self.keySeparator, translationsHash );
     }
 
-
-
     // process each locale and namespace
     // =================================
     for (var i in self.locales) {
