@@ -150,12 +150,9 @@ stream
   }))
   .pipe(parser.on('reading', function(path) { console.log('[parse] '.green + path) }))
   .pipe(through( { objectMode: true }, function (file, encoding, done) {
-
     mkdirp.sync( path.dirname(file.path) );
 
     fs.writeFileSync( file.path, file.contents + "\n" );
-
-    this.push( file );
 
     done();
   }));

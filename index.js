@@ -35,6 +35,7 @@ function Parser(options, transformConfig) {
     this.suffix             = options.suffix || '';
     this.prefix             = options.prefix || '';
     this.writeOld           = options.writeOld !== false;
+    this.writeAdditional    = options.writeAdditional !== false;
     this.keepRemoved        = options.keepRemoved;
     this.ignoreVariables    = options.ignoreVariables || false;
 
@@ -230,6 +231,10 @@ Parser.prototype._flush = function(done) {
                 localeBase,
                 prefix + namespace + suffix + '_old' + extension
             );
+            var namespaceAdditionalPath = path.resolve(
+                localeBase,
+                prefix + namespace + suffix + '_add' + extension
+            );
 
             if ( fs.existsSync( namespacePath ) ) {
                 try {
@@ -250,11 +255,24 @@ Parser.prototype._flush = function(done) {
                 }
                 catch (error) {
                     this.emit( 'json_error', error.name, error.message );
-                    currentTranslations = {};
+                    oldTranslations = {};
                 }
             }
             else {
                 oldTranslations = {};
+            }
+
+            if ( fs.existsSync( namespaceAdditionalPath ) ) {
+                try {
+                    additionalTranslations = JSON.parse( fs.readFileSync( namespaceAdditionalPath ) );
+                }
+                catch (error) {
+                    this.emit( 'json_error', error.name, error.message );
+                    additionalTranslations = {};
+                }
+            }
+            else {
+                additionalTranslations = {};
             }
 
 
@@ -268,6 +286,7 @@ Parser.prototype._flush = function(done) {
             // merges former old translations with the new ones
             mergedTranslations.old = _.extend( oldTranslations, mergedTranslations.old );
 
+            mergedTranslations.additional = _.extend( additionalTranslations, mergedTranslations.additional );
 
 
             // push files back to the stream
@@ -287,6 +306,19 @@ Parser.prototype._flush = function(done) {
                 });
                 this.emit( 'writing', namespaceOldPath );
                 self.push( mergedOldTranslationsFile );
+            }
+
+            if (locale !== 'en' && self.writeAdditional) {
+                if (Object.keys(mergedTranslations.additional).length !== 0)  {
+                    mergedAdditionalTranslationsFile = new File({
+                        path: namespaceAdditionalPath,
+                        base: base,
+                        contents: new Buffer(JSON.stringify(mergedTranslations.additional, null, 2))
+                    });
+                    this.emit( 'writing', namespaceAdditionalPath );
+                    self.push( mergedAdditionalTranslationsFile );
+                }
+
             }
 
 

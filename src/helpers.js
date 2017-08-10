@@ -69,12 +69,27 @@ function mergeHash(source, target, old, keepRemoved) {
         }
     });
 
+    var additional = diff(source, target);
+
     return {
         'new': target,
-        'old': old
+        'old': old,
+        'additional': additional
     };
 }
 
+function diff(source, target, parent = [], memo = {}) {
+  Object.keys(target).forEach(function (key) {
+    if (source === undefined || source[key] === undefined) {
+      memo[key] = target[key];
+    }
+    if (typeof target[key] === 'object' && target[key].constructor !== Array) {
+      return diff(source[key], target[key], parent.concat(key), memo);
+    }
+  })
+
+  return memo;
+}
 
 // Takes a `target` hash and replace its empty
 // values with the `source` hash ones if they
