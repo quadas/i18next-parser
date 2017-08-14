@@ -5,11 +5,11 @@ var program     = require('commander');
 var fs          = require('fs');
 var path        = require('path');
 var Readable    = require('stream').Readable;
-var readdirp    = require('readdirp');
 var through     = require('through2');
 var File        = require('vinyl');
 var mkdirp      = require('mkdirp');
 var Parser      = require('../index');
+var Patcher     = require('../patcher');
 
 
 // Configure the command line
@@ -34,6 +34,7 @@ program
   .option( '--keep-removed'                      , 'Prevent keys no longer found from being removed' )
   .option( '--write-old <string>'                , 'Save (or don\'t if false) _old files' )
   .option( '--ignore-variables'                  , 'Don\'t fail when a variable is found' )
+  .option( '--patch <string>'                    , 'patch' )
   .parse( process.argv );
 
 
@@ -43,6 +44,7 @@ program
 var firstArgument = process.argv[2];
 var input;
 var output;
+var patch;
 
 if ( firstArgument && firstArgument.charAt(0) !== '-' ) {
   var parts = firstArgument.split(':');
@@ -59,7 +61,8 @@ else {
   input = process.cwd();
 }
 
-output = output || program.output || 'locales';
+output = output || program.output || program.input || 'locales';
+patch = program.patch || '';
 
 if ( ! fs.existsSync(input) ) {
   console.log( '\n' + 'Error: '.red + input + ' is not a file or directory\n' );
@@ -77,16 +80,25 @@ program.writeOld = program.writeOld !== 'false';
 program.directoryFilter = program.directoryFilter && program.directoryFilter.split(',');
 program.fileFilter = program.fileFilter && program.fileFilter.split(',');
 program.output = path.resolve(process.cwd(), output);
-
+program.patch = path.resolve(process.cwd(), patch);
 
 
 // Welcome message
 // ===============
-var intro = '\n'+
-'i18next Parser'.yellow + '\n' +
-'--------------'.yellow + '\n' +
-'Input:  '.green + input + '\n' +
-'Output: '.green + program.output + '\n\n';
+var intro;
+if (patch) {
+    intro = '\n'+
+        'i18next Parser'.yellow + '\n' +
+        '--------------'.yellow + '\n' +
+        'Input:  '.green + input + '\n' +
+        'Patch: '.green + program.patch + '\n\n';
+} else {
+    intro = '\n'+
+        'i18next Parser'.yellow + '\n' +
+        '--------------'.yellow + '\n' +
+        'Input:  '.green + input + '\n' +
+        'Output: '.green + program.output + '\n\n';
+}
 
 console.log(intro);
 
@@ -94,16 +106,7 @@ console.log(intro);
 
 // Create a stream from the input
 // ==============================
-var stat = fs.statSync(input);
 var stream;
-
-
-// Parse the stream
-// ================
-var parser = Parser(program);
-parser.on('error', function (message, region) {
-  console.log('[error] '.red + message + ': ' + region.trim());
-});
 
 stream = new Readable({ objectMode: true });
 var gitFiles = require('child_process').execSync('git ls-files ' + path.resolve(input)).toString('utf-8').split("\n")
@@ -120,6 +123,21 @@ stream._read = function() {
     stream.push(null)
 }
 
+// Parser
+// ================
+
+function pickParser() {
+    var parser = patch ? Patcher(patch) : Parser(program);
+
+    parser.on('error', function (message, region) {
+        console.log('[error] '.red + message + ': ' + region.trim());
+    });
+    parser.on('reading', function(path) { console.log('[parse] '.green + path) })
+    return parser;
+}
+
+// Transform
+// ================
 stream
     .pipe(through( { objectMode: true }, function (data, encoding, done) {
         if ( data instanceof File ) {
@@ -135,7 +153,7 @@ stream
 
         done();
     }))
-    .pipe(parser.on('reading', function(path) { console.log('[parse] '.green + path) }))
+    .pipe(pickParser())
     .pipe(through( { objectMode: true }, function (file, encoding, done) {
         mkdirp.sync( path.dirname(file.path) );
 
