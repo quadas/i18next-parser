@@ -33,6 +33,7 @@ program
   .option( '--fileFilter <list>'                 , 'Filter files' )
   .option( '--keep-removed'                      , 'Prevent keys no longer found from being removed' )
   .option( '--write-old <string>'                , 'Save (or don\'t if false) _old files' )
+  .option( '--write-additional <string>'         , 'Save (or don\'t if false) _add files' )
   .option( '--ignore-variables'                  , 'Don\'t fail when a variable is found' )
   .option( '--patch <string>'                    , 'patch' )
   .parse( process.argv );

@@ -2,6 +2,8 @@
 // turn it into a hash {foo: {bar: ""}}.
 // The generated hash can be attached to an
 // optional `hash`.
+const set = require("lodash/set");
+
 function hashFromString(path, separator, hash) {
   separator = separator || ".";
 
@@ -73,14 +75,16 @@ function mergeHash(source, target, old, keepRemoved) {
   };
 }
 
-function diff(source, target, parent = [], memo = {}) {
+function diff(source, target, parents = [], memo = {}) {
   Object.keys(target).forEach(function(key) {
-    if (source === undefined || source[key] === undefined) {
-      memo[key] = target[key];
+    if (source === undefined || (source[key] === undefined && target[key] !== "object")) {
+      // puts key value under parent path, since key may includes '.',
+      // use ['a.b.c'] to explicitly set value
+      set(memo, parents.join("").concat(`["${key}"]`), target[key]);
       return memo;
     }
     if (typeof target[key] === "object" && target[key].constructor !== Array) {
-      return diff(source[key], target[key], parent.concat(key), memo);
+      return diff(source[key], target[key], parents.concat(`["${key}"]`), memo);
     }
   });
 
